@@ -2,7 +2,7 @@
   By: Steven Lawler (Slyke)
   Email: steven.lawler777@gmail.com
   Creation Date: 20/09/2015
-  Version: 1.0a
+  Version: 1.01a
   Description:
     This is a Javascript source injector. It allows you to inject CSS and Javascript files into your webpage without editing the HTML.
   Example Usage (Put this in the <head> area):
@@ -79,11 +79,12 @@ var fileInject = new function() {
       newFile = defaultInclude();
       newFile.fileName = fileObject;
       newFile.type = getFileExtension(newFile.fileName);
-      
-      if (checkIncludeObject(newFile)) {
+	  newFile.order = (filesToLoad.length + 1);
+	  var validFile = checkIncludeObject(newFile);
+      if (validFile === 0) {
         filesToLoad.push(newFile);
       } else {
-        console.log('[fileInject::loadFile()] Error: Invalid File Object: ', newFile);
+        console.log('[fileInject::loadFile()] Error: Invalid File Object: ', newFile, " Result: ", validFile);
       }
       
     } else if (typeof(fileObject) === 'object') {
@@ -95,13 +96,14 @@ var fileInject = new function() {
       }
       
       newFile.area = (newFile.area === undefined || newFile.area == null ? "head" : newFile.area);
-      newFile.order = (newFile.order === undefined || newFile.order == null ? 0 : newFile.order);
+      newFile.order = (newFile.order === undefined || newFile.order == null ? 1 : newFile.order);
       newFile.type = (newFile.type === undefined || newFile.type == null ? getFileExtension(newFile.fileName) : newFile.type);
       
-      if (checkIncludeObject(newFile)) {
-        filesToLoad.push(newFile);
+	  var validFile = checkIncludeObject(newFile);
+      if (validFile === 0) {
+		filesToLoad.push(newFile);
       } else {
-        console.log('[fileInject::loadFile()] Error: Invalid File Object: ', newFile);
+        console.log('[fileInject::loadFile()] Error: Invalid File Object: ', newFile, " Invalid Error Code: ", validFile);
       }
       
     } else {
@@ -116,7 +118,6 @@ var fileInject = new function() {
 
   this.inject = function(newInjectOnFinishRequests, callbackFunction) 
   {
-    console.log(filesToLoad);
     newInjectOnFinishRequests = (newInjectOnFinishRequests === undefined || newInjectOnFinishRequests == null ? true : newInjectOnFinishRequests);
     
     injectCallbackFunction = callbackFunction;
@@ -128,25 +129,25 @@ var fileInject = new function() {
         return false;
       }
     }
-  
+	
     sortObjectByValue(filesToLoad, "order");
-  
+
     var objHTML = null;
   
     for (var i = 0; i < filesToLoad.length; i++) {
       if (filesToLoad[i].type === 'js') {
         objHTML = document.createElement('script');
-        objHTML.setAttribute('type','text/javascript');
+        objHTML.setAttribute('type', 'text/javascript');
         objHTML.setAttribute('src', filesToLoad[i].fileName);
         
-        document.getElementsByTagName('head')[0].appendChild(objHTML);
+        document.getElementsByTagName(filesToLoad[i].area)[0].appendChild(objHTML);
       } else if (filesToLoad[i].type === 'css') {
         objHTML = document.createElement('link');
         objHTML.setAttribute('rel', 'stylesheet');
         objHTML.setAttribute('type', 'text/css');
         objHTML.setAttribute('href', filesToLoad[i].fileName);
         
-        document.getElementsByTagName('head')[0].appendChild(objHTML);
+        document.getElementsByTagName(filesToLoad[i].area)[0].appendChild(objHTML);
       } else {
         console.log('[fileInject::inject()] Error: Unknown type: ', typeof(fileObject), ' For File: ', filesToLoad[i].fileName, '  At Index: ', i);
         console.log('[fileInject::inject()] -- Full file list:', filesToLoad);
@@ -159,6 +160,11 @@ var fileInject = new function() {
     }
   
   };
+  
+  this.clearFileList = function() 
+  {
+    filesToLoad = [];
+  }
 
   var getFileExtension = function(fileName) 
   {
@@ -167,38 +173,54 @@ var fileInject = new function() {
   
   var checkIncludeObject = function(objectToInclude)
   {
+  
+    var returnValue = 0;
+  
     if (objectToInclude.area === undefined || objectToInclude.area == null || objectToInclude.area == '') {
-      return false;
+      returnValue += 1;
     }
     
     if (objectToInclude.order === undefined || objectToInclude.order == null || objectToInclude.order == '') {
-      return false;
+      returnValue += 2;
     }
     
     if (objectToInclude.fileName === undefined || objectToInclude.fileName == null || objectToInclude.fileName == '') {
-      return false;
+      returnValue += 4;
     }
     
-    if (objectToInclude.type === undefined || objectToInclude.type == null || objectToInclude.type == "") {
-      return false;
+    if (objectToInclude.type === undefined || objectToInclude.type == null || objectToInclude.type == '') {
+      returnValue += 8;
     }
     
-    return true;
+    return returnValue;
     
   };
   
-  var sortObjectByValue = function (arrayToSort, sortingKey, sortAscending) 
- {
   
+  var sortObjectByValue = function (arrayToSort, sortingKey, sortAscending) 
+  {
+
     sortAscending = (sortAscending === undefined || sortAscending == null ? true : sortAscending);
     
     if(sortAscending) {
       arrayToSort.sort(function (a, b) {
-        return a[sortingKey] > b[sortingKey];
+        if (a[sortingKey] > b[sortingKey]) {
+			    return 1;
+		    }
+        if (a[sortingKey] < b[sortingKey]) {
+          return -1;
+        }
+        return 0;
       });
     } else {
       arrayToSort.sort(function (a, b) {
-        return a[sortingKey] < b[sortingKey];
+        if (a[sortingKey] > b[sortingKey]) {
+          return -1;
+        }
+        if (a[sortingKey] < b[sortingKey]) {
+          return 1;
+        }
+        return 0;
       });
     }
   };
